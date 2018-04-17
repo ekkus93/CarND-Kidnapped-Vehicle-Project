@@ -9,7 +9,9 @@
 #ifndef PARTICLE_FILTER_H_
 #define PARTICLE_FILTER_H_
 
+#include <random>
 #include "helper_functions.h"
+#include "Eigen/Dense"
 
 struct Particle {
 
@@ -26,10 +28,10 @@ struct Particle {
 
 
 class ParticleFilter {
-	
 	// Number of particles to draw
 	int num_particles; 
 	
+	std::default_random_engine gen;
 	
 	
 	// Flag, if filter is initialized
@@ -71,6 +73,8 @@ public:
 	 * @param yaw_rate Yaw rate of car from t to t+1 [rad/s]
 	 */
 	void prediction(double delta_t, double std_pos[], double velocity, double yaw_rate);
+
+	LandmarkObs GetBestMapLandmarkForObservationLandmark(const std::vector<LandmarkObs> &mapLandmarks, const LandmarkObs &observation);
 	
 	/**
 	 * dataAssociation Finds which observations correspond to which landmarks (likely by using
@@ -80,6 +84,17 @@ public:
 	 */
 	void dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations);
 	
+	LandmarkObs ConvertObsCoordsToMapCoords(const LandmarkObs &obs, const Particle &particle);
+
+	double CalcGaussianNorm(double sig_x, double sig_y);
+
+	std::vector<LandmarkObs> FilterMapLandmarks(const Map &map, double x, double y, double max_range);
+
+	double CalcWeight(const std::vector<LandmarkObs> &transformedObservations, std::vector<LandmarkObs> &predictedLandmarks, 
+double norm_factor, double std_x, double std_y);
+
+	void NormalizeParticles(std::vector<Particle> &particles);
+
 	/**
 	 * updateWeights Updates the weights for each particle based on the likelihood of the 
 	 *   observed measurements. 
@@ -88,8 +103,11 @@ public:
 	 * @param observations Vector of landmark observations
 	 * @param map Map class containing map landmarks
 	 */
-	void updateWeights(double sensor_range, double std_landmark[], const std::vector<LandmarkObs> &observations,
-			const Map &map_landmarks);
+	/*
+	void updateWeights(double sensor_range, double std_landmark[], const std::vector<LandmarkObs> &observations, const Map &map_landmarks);
+	*/
+	void updateWeights(double sensor_range, double std_landmark[],
+                      std::vector<LandmarkObs> observations, Map map_landmarks);
 	
 	/**
 	 * resample Resamples from the updated set of particles to form
