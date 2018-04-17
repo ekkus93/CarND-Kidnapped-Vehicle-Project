@@ -11,10 +11,8 @@
 
 #include <random>
 #include "helper_functions.h"
-#include "Eigen/Dense"
 
 struct Particle {
-
 	int id;
 	double x;
 	double y;
@@ -73,8 +71,6 @@ public:
 	 * @param yaw_rate Yaw rate of car from t to t+1 [rad/s]
 	 */
 	void prediction(double delta_t, double std_pos[], double velocity, double yaw_rate);
-
-	LandmarkObs GetBestMapLandmarkForObservationLandmark(const std::vector<LandmarkObs> &mapLandmarks, const LandmarkObs &observation);
 	
 	/**
 	 * dataAssociation Finds which observations correspond to which landmarks (likely by using
@@ -84,16 +80,41 @@ public:
 	 */
 	void dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations);
 	
+	/**
+	 * ConvertObsCoordsToMapCoords converts the local coordinates of
+	 * obs to map coords in reference to particle.
+	 * @param obs - landmark observation with local coordinates 
+	 * @param particle - reference particle
+	 * @return obs with map coordinates
+	 */
 	LandmarkObs ConvertObsCoordsToMapCoords(const LandmarkObs &obs, const Particle &particle);
 
-	double CalcGaussianNorm(double sig_x, double sig_y);
-
+	/**
+	 * FilterMapLandmarks filters out map landmark observations which are
+	 * outside of max_range from x,y
+	 * @param map - Map with landmark observations
+	 * @param x - x reference
+	 * @param y - y reference
+	 * @param max_range - max range from x,y
+	 * @return subset of map landmark observations
+	 */
 	std::vector<LandmarkObs> FilterMapLandmarks(const Map &map, double x, double y, double max_range);
 
-	double CalcWeight(const std::vector<LandmarkObs> &transformedObservations, std::vector<LandmarkObs> &predictedLandmarks, 
-double norm_factor, double std_x, double std_y);
+	/**
+	 * CalcWeight calculates the weight of a particle
+	 * @param transformedObservations - observations based on map coordinates
+	 * @param predictedLandmarks - filtered map landmarks
+	 * @param std_x - standard dev of x
+	 * @param std_y - standard dev of y
+	 * @return the weight for a particle 
+	 */
+	double CalcWeight(const std::vector<LandmarkObs> &transformedObservations, std::vector<LandmarkObs> &predictedLandmarks, double std_x, double std_y);
 
-	void NormalizeParticles(std::vector<Particle> &particles);
+	/**
+	 * NormalizeParticleWeights normalizes all of the 
+	 * weights for each of the particles.
+	 */
+	void NormalizeParticleWeights();
 
 	/**
 	 * updateWeights Updates the weights for each particle based on the likelihood of the 
@@ -103,9 +124,6 @@ double norm_factor, double std_x, double std_y);
 	 * @param observations Vector of landmark observations
 	 * @param map Map class containing map landmarks
 	 */
-	/*
-	void updateWeights(double sensor_range, double std_landmark[], const std::vector<LandmarkObs> &observations, const Map &map_landmarks);
-	*/
 	void updateWeights(double sensor_range, double std_landmark[],
                       std::vector<LandmarkObs> observations, Map map_landmarks);
 	

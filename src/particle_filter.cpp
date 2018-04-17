@@ -14,13 +14,10 @@
 #include <sstream>
 #include <string>
 #include <iterator>
-#include "Eigen/Dense"
 
 #include "particle_filter.h"
 
 using namespace std;
-using Eigen::MatrixXd;
-using Eigen::VectorXd;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// *TODO: Set the number of particles. Initialize all particles to first position (based on estimates of 
@@ -45,13 +42,8 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 
 		particles.push_back(particle);
 		weights.push_back(1);
-
-		assert(particles.size()>0);
-		assert(weights.size()>0);
 	}
 
-	cout << "particles.size(): " << particles.size() << "\n";
-	cout << "weights.size(): " << weights.size() << "\n";
 	is_initialized = true;
 }
 
@@ -93,28 +85,6 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	}
 }
 
-LandmarkObs ParticleFilter::GetBestMapLandmarkForObservationLandmark(const vector<LandmarkObs> &mapLandmarks, const LandmarkObs &observation)
-{
-	LandmarkObs bestMapLandmark;
-	bestMapLandmark.id = 0;
-
-	double bestDistance = std::numeric_limits<double>::infinity();
-
-	for(int i=0; i<mapLandmarks.size(); i++)
-	{
-		double currDistance = dist(mapLandmarks[i].x, 
-																mapLandmarks[i].y,
-																observation.x, observation.y);
-		if (currDistance < bestDistance)
-		{
-			bestMapLandmark = mapLandmarks[i];
-			bestDistance = currDistance;
-		}
-	}
-			
-	return bestMapLandmark;
-}
-
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
 	// *TODO: Find the predicted measurement that is closest to each observed measurement and assign the 
 	//   observed measurement to this particular landmark.
@@ -122,15 +92,14 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	//   implement this method and use it as a helper during the updateWeights phase.
 
   for (int i=0; i<observations.size(); i++) {
-		LandmarkObs currObs = observations[i];
     double min_dist = numeric_limits<double>::max();
 
     for (int j=0; j<predicted.size(); j++) {
 			LandmarkObs currPred = predicted[j];
-      double d = dist(currObs.x, currObs.y, currPred.x, currPred.y);
+      double d = dist(observations[i].x, observations[i].y, currPred.x, currPred.y);
       if (d < min_dist) 
 			{
-        currObs.id	= currPred.id;
+        observations[i].id	= currPred.id;
         min_dist = d;
       }
   	}
@@ -145,11 +114,6 @@ LandmarkObs ParticleFilter::ConvertObsCoordsToMapCoords(const LandmarkObs &obs, 
 	mapObs.y = sin(particle.theta) * obs.x + cos(particle.theta) * obs.y + particle.y;
 
 	return mapObs;
-}
-
-double ParticleFilter::CalcGaussianNorm(double sig_x, double sig_y)
-{
-	return 1.0/(2.0 * M_PI * sig_x * sig_y);
 }
 
 vector<LandmarkObs> ParticleFilter::FilterMapLandmarks(const Map &map, double x, double y, double max_range)
@@ -179,7 +143,7 @@ vector<LandmarkObs> ParticleFilter::FilterMapLandmarks(const Map &map, double x,
 
 double ParticleFilter::CalcWeight(const vector<LandmarkObs> &transformedObservations, 
 vector<LandmarkObs> &predictedLandmarks, 
-double norm_factor, double std_x, double std_y)
+double std_x, double std_y)
 {
   double particle_likelihood = 1.0;
 
@@ -190,14 +154,17 @@ double norm_factor, double std_x, double std_y)
     // Find corresponding landmark on map for centering gaussian distribution
     for (int j=0; j<predictedLandmarks.size(); j++)
 		{
-      if (tObs.id == predictedLandmarks[i].id) {
-        mu_x = predictedLandmarks[i].x;
-        mu_y = predictedLandmarks[i].y;
+			LandmarkObs pLandmark = predictedLandmarks[j];
+      if (tObs.id == pLandmark.id) {
+        mu_x = pLandmark.x;
+        mu_y = pLandmark.y;
         break;
       }
 		}
 
-    double prob = exp( -( pow(tObs.x - mu_x, 2) / (2 * std_x * std_x) + pow(tObs.y - mu_y, 2) / (2 * std_y * std_y) ) );
+		double norm_factor = 2 * M_PI * std_x * std_y;
+    double prob = exp( -( pow(tObs.x - mu_x, 2) / (2 * std_x * std_x) + 
+										pow(tObs.y - mu_y, 2) / (2 * std_y * std_y) ) );
 
     particle_likelihood *= prob / norm_factor;
 	}	
@@ -205,7 +172,7 @@ double norm_factor, double std_x, double std_y)
 	return particle_likelihood;
 }
 
-void ParticleFilter::NormalizeParticles(vector<Particle> &particles) 
+void ParticleFilter::NormalizeParticleWeights() 
 {
 	double denom = numeric_limits<double>::epsilon();
 	for(int i=0; i<particles.size(); i++)
@@ -235,7 +202,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 	double std_x = std_landmark[0];
 	double std_y = std_landmark[1];
-	double gausNorm = CalcGaussianNorm(std_x, std_y);
 
 	for(int i=0; i<particles.size(); i++)
 	{
@@ -245,9 +211,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 		vector<LandmarkObs> predictedLandmarks =
 			FilterMapLandmarks(map_landmarks, p_x, p_y, sensor_range);		
-
 		vector<LandmarkObs> transformedObservations;
-
 		for(int j=0; j<observations.size(); j++)
 		{
 			LandmarkObs transformedObs = ConvertObsCoordsToMapCoords(observations[j], particles[i]);
@@ -257,15 +221,12 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 		dataAssociation(predictedLandmarks, transformedObservations);
 
-		particles[i].weight = CalcWeight(transformedObservations,
-																			predictedLandmarks, gausNorm, 
+		particles[i].weight = CalcWeight(transformedObservations, predictedLandmarks, 
 																			std_x, std_y);
 	}
 
-	NormalizeParticles(particles);
+	NormalizeParticleWeights();
 }
-
-
 
 void ParticleFilter::resample() {
 	// *TODO: Resample particles with replacement with probability proportional to their weight. 
