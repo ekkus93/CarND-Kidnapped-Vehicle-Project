@@ -21,45 +21,6 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
 
-MatrixXd ParticleCollection::GetPositionMatrix()
-{
-	MatrixXd positionMatrix = MatrixXd(particles_.size(), 2);
-	for(int i=0; i<particles_.size(); i++)
-	{
-		positionMatrix.row(i) << particles_[i].x, particles_[i].y;
-	}
-
-	return positionMatrix;
-}
-
-MatrixXd ParticleCollection::GetPositionMatrix_1col()
-{
-	MatrixXd positionMatrix = MatrixXd(particles_.size(), 2);
-	for(int i=0; i<particles_.size(); i++)
-	{
-		positionMatrix.row(i) << particles_[i].x, particles_[i].y, 1;
-	}
-
-	return positionMatrix;
-}
-
-MatrixXd ParticleCollection::ConvertToMapCoords(const MatrixXd &positionMatrix_1col, const Particle &particle)
-{
-	MatrixXd homogeneousTransform = MatrixXd(3, 3);
-  homogeneousTransform << cos(particle.theta), -sin(particle.theta), particle.x,
-                            sin(particle.theta), cos(particle.theta), particle.y,
-                            0, 0, 1;
-
-	return positionMatrix_1col * homogeneousTransform.transpose();
-}
-
-VectorXd ParticleCollection::GetDistances(const MatrixXd &positionMatrix, const VectorXd &landmarkMapPosVec)
-{
-	MatrixXd diffMatrix = positionMatrix.array().rowwise() - landmarkMapPosVec.transpose().array();
-	
-	return diffMatrix.rowwise().norm();
-}
-
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// *TODO: Set the number of particles. Initialize all particles to first position (based on estimates of 
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
@@ -126,29 +87,6 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	}
 }
 
-/*
-void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
-	// *TODO: Find the predicted measurement that is closest to each observed measurement and assign the 
-	//   observed measurement to this particular landmark.
-	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
-	//   implement this method and use it as a helper during the updateWeights phase.
-
-  for (int i=0; i<observations.size(); i++) {
-    double min_dist = numeric_limits<double>::max();
-
-    for (int j=0; j<predicted.size(); j++) {
-			LandmarkObs currPred = predicted[j];
-      double d = dist(observations[i].x, observations[i].y, currPred.x, currPred.y);
-      if (d < min_dist) 
-			{
-        observations[i].id	= currPred.id;
-        min_dist = d;
-      }
-  	}
-  }
-}
-*/
-//void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
 void ParticleFilter::dataAssociation(LandmarkObsCollection &predictedCollection, 
 																			LandmarkObsCollection &observationCollection) {
 	// *TODO: Find the predicted measurement that is closest to each observed measurement and assign the 
@@ -209,7 +147,7 @@ LandmarkObsCollection ParticleFilter::FilterMapLandmarks(const Map &map, double 
 }
 
 double ParticleFilter::CalcWeight(const LandmarkObsCollection &transformedObsCollection, 
-LandmarkObsCollection &predictedLandmarkCollection, 
+const LandmarkObsCollection &predictedLandmarkCollection, 
 double std_x, double std_y)
 {
   double particle_likelihood = 1.0;
@@ -254,7 +192,7 @@ void ParticleFilter::NormalizeParticleWeights()
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
-                                   std::vector<LandmarkObs> observations, Map map_landmarks) 
+                      const std::vector<LandmarkObs> &observations, const Map &map_landmarks)																	
 {
 	// TODO: Update the weights of each particle using a mult-variate Gaussian distribution. You can read
 	//   more about this distribution here: https://en.wikipedia.org/wiki/Multivariate_normal_distribution

@@ -10,42 +10,16 @@
 #define PARTICLE_FILTER_H_
 
 #include <random>
+#include "particle.h"
+#include "landmark.h"
 #include "helper_functions.h"
 #include "Eigen/Dense"
-
-using namespace std;
-using Eigen::MatrixXd;
-using Eigen::VectorXd;
-using std::vector;
-
-struct Particle {
-	int id;
-	double x;
-	double y;
-	double theta;
-	double weight;
-	std::vector<int> associations;
-	std::vector<double> sense_x;
-	std::vector<double> sense_y;
-};
-
-class ParticleCollection 
-{
-	public:
-		vector<Particle> particles_;
-
-		MatrixXd GetPositionMatrix();
-		MatrixXd GetPositionMatrix_1col();
-		MatrixXd ConvertToMapCoords(const MatrixXd &positionMatrix_1col, const Particle &particle);
-		VectorXd GetDistances(const MatrixXd &positionMatrix, const VectorXd &landmarkMapPosVec);
-};
 
 class ParticleFilter {
 	// Number of particles to draw
 	int num_particles; 
 	
 	std::default_random_engine gen;
-	
 	
 	// Flag, if filter is initialized
 	bool is_initialized;
@@ -126,7 +100,7 @@ public:
 	 * @return the weight for a particle 
 	 */
 	double CalcWeight(const LandmarkObsCollection &transformedObsCollection, 
-										LandmarkObsCollection &predictedLandmarkCollection, 
+										const LandmarkObsCollection &predictedLandmarkCollection, 
 										double std_x, double std_y);
 
 	/**
@@ -144,7 +118,7 @@ public:
 	 * @param map Map class containing map landmarks
 	 */
 	void updateWeights(double sensor_range, double std_landmark[],
-                      std::vector<LandmarkObs> observations, Map map_landmarks);
+                      const std::vector<LandmarkObs> &observations, const Map &map_landmarks);
 	
 	/**
 	 * resample Resamples from the updated set of particles to form
@@ -171,7 +145,5 @@ public:
 		return is_initialized;
 	}
 };
-
-
 
 #endif /* PARTICLE_FILTER_H_ */

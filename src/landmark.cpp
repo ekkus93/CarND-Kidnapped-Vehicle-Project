@@ -1,4 +1,10 @@
 #include "landmark.h"
+#include "Eigen/Dense"
+
+using namespace std;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+using std::vector;
 
 MatrixXd LandmarkObsCollection::GetPositionMatrix()
 {
@@ -22,7 +28,7 @@ MatrixXd LandmarkObsCollection::GetPositionMatrix_1col()
 	return positionMatrix;
 }
 
-MatrixXd LandmarkObsCollection::ConvertToMapCoords(const MatrixXd &positionMatrix_1col, const Particle &particle)
+MatrixXd LandmarkObsCollection::ConvertToMapCoords(const MatrixXd &positionMatrix_1col, Particle &particle)
 {
 	MatrixXd homogeneousTransform = MatrixXd(3, 3);
   homogeneousTransform << cos(particle.theta), -sin(particle.theta), particle.x,
