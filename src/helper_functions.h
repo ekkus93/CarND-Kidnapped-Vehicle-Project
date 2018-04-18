@@ -13,6 +13,14 @@
 #include <math.h>
 #include <vector>
 #include "map.h"
+#include "particle_filter.h"
+#include "landmark.h"
+#include "Eigen/Dense"
+
+using namespace std;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+using std::vector;
 
 // for portability of M_PI (Vis Studio, MinGW, etc.)
 #ifndef M_PI
@@ -36,16 +44,6 @@ struct ground_truth {
 	double x;		// Global vehicle x position [m]
 	double y;		// Global vehicle y position
 	double theta;	// Global vehicle yaw [rad]
-};
-
-/*
- * Struct representing one landmark observation measurement.
- */
-struct LandmarkObs {
-	
-	int id;				// Id of matching landmark in the map.
-	double x;			// Local (vehicle coordinates) x position of landmark observation [m]
-	double y;			// Local (vehicle coordinates) y position of landmark observation [m]
 };
 
 /*

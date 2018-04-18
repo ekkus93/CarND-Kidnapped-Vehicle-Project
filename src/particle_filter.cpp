@@ -10,14 +10,55 @@
 #include <iostream>
 #include <numeric>
 #include <math.h> 
-#include <iostream>
 #include <sstream>
 #include <string>
 #include <iterator>
-
+#include "Eigen/Dense"
 #include "particle_filter.h"
 
 using namespace std;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+using std::vector;
+
+MatrixXd ParticleCollection::GetPositionMatrix()
+{
+	MatrixXd positionMatrix = MatrixXd(particles_.size(), 2);
+	for(int i=0; i<particles_.size(); i++)
+	{
+		positionMatrix.row(i) << particles_[i].x, particles_[i].y;
+	}
+
+	return positionMatrix;
+}
+
+MatrixXd ParticleCollection::GetPositionMatrix_1col()
+{
+	MatrixXd positionMatrix = MatrixXd(particles_.size(), 2);
+	for(int i=0; i<particles_.size(); i++)
+	{
+		positionMatrix.row(i) << particles_[i].x, particles_[i].y, 1;
+	}
+
+	return positionMatrix;
+}
+
+MatrixXd ParticleCollection::ConvertToMapCoords(const MatrixXd &positionMatrix_1col, const Particle &particle)
+{
+	MatrixXd homogeneousTransform = MatrixXd(3, 3);
+  homogeneousTransform << cos(particle.theta), -sin(particle.theta), particle.x,
+                            sin(particle.theta), cos(particle.theta), particle.y,
+                            0, 0, 1;
+
+	return positionMatrix_1col * homogeneousTransform.transpose();
+}
+
+VectorXd ParticleCollection::GetDistances(const MatrixXd &positionMatrix, const VectorXd &landmarkMapPosVec)
+{
+	MatrixXd diffMatrix = positionMatrix.array().rowwise() - landmarkMapPosVec.transpose().array();
+	
+	return diffMatrix.rowwise().norm();
+}
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// *TODO: Set the number of particles. Initialize all particles to first position (based on estimates of 
@@ -40,7 +81,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 		particle.theta = N_theta(gen);
 		particle.weight = 1;
 
-		particles.push_back(particle);
+		particleCollection_.particles_.push_back(particle);
 		weights.push_back(1);
 	}
 
@@ -58,9 +99,9 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 		double new_y;
 		double new_theta;
 
-		double curr_x = particles[i].x;
-		double curr_y = particles[i].y;
-		double curr_theta = particles[i].theta;
+		double curr_x = particleCollection_.particles_[i].x;
+		double curr_y = particleCollection_.particles_[i].y;
+		double curr_theta = particleCollection_.particles_[i].theta;
 
 		if (fabs(yaw_rate) > 0.001)
 		{
@@ -79,12 +120,13 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 		normal_distribution<double> N_y(new_y, std_pos[1]);
 		normal_distribution<double> N_theta(new_theta, std_pos[2]);
 
-		particles[i].x = N_x(gen);
-    particles[i].y = N_y(gen);
-    particles[i].theta = N_theta(gen);
+		particleCollection_.particles_[i].x = N_x(gen);
+    particleCollection_.particles_[i].y = N_y(gen);
+    particleCollection_.particles_[i].theta = N_theta(gen);
 	}
 }
 
+/*
 void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
 	// *TODO: Find the predicted measurement that is closest to each observed measurement and assign the 
 	//   observed measurement to this particular landmark.
@@ -105,6 +147,31 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
   	}
   }
 }
+*/
+//void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
+void ParticleFilter::dataAssociation(LandmarkObsCollection &predictedCollection, 
+																			LandmarkObsCollection &observationCollection) {
+	// *TODO: Find the predicted measurement that is closest to each observed measurement and assign the 
+	//   observed measurement to this particular landmark.
+	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
+	//   implement this method and use it as a helper during the updateWeights phase.
+
+  for (int i=0; i<observationCollection.landmarkObsVect_.size(); i++) {
+    double min_dist = numeric_limits<double>::max();
+
+    for (int j=0; j<predictedCollection.landmarkObsVect_.size(); j++) {
+			LandmarkObs currPred = predictedCollection.landmarkObsVect_[j];
+      double d = dist(observationCollection.landmarkObsVect_[i].x, 
+											observationCollection.landmarkObsVect_[i].y, 
+											currPred.x, currPred.y);
+      if (d < min_dist) 
+			{
+        observationCollection.landmarkObsVect_[i].id	= currPred.id;
+        min_dist = d;
+      }
+  	}
+  }
+}
 
 LandmarkObs ParticleFilter::ConvertObsCoordsToMapCoords(const LandmarkObs &obs, const Particle &particle)
 {
@@ -116,9 +183,9 @@ LandmarkObs ParticleFilter::ConvertObsCoordsToMapCoords(const LandmarkObs &obs, 
 	return mapObs;
 }
 
-vector<LandmarkObs> ParticleFilter::FilterMapLandmarks(const Map &map, double x, double y, double max_range)
+LandmarkObsCollection ParticleFilter::FilterMapLandmarks(const Map &map, double x, double y, double max_range)
 {
-	vector<LandmarkObs> filteredMapLandmarks;
+	LandmarkObsCollection filteredMapLandmarkCollection;
 
 	for(int i=0; i<map.landmark_list.size(); i++)
 	{
@@ -134,27 +201,27 @@ vector<LandmarkObs> ParticleFilter::FilterMapLandmarks(const Map &map, double x,
 			currMapLandmark.x = curr_x;
 			currMapLandmark.y = curr_y;
 
-			filteredMapLandmarks.push_back(currMapLandmark);
+			filteredMapLandmarkCollection.landmarkObsVect_.push_back(currMapLandmark);
 		}
 	}
 
-	return filteredMapLandmarks;
+	return filteredMapLandmarkCollection;
 }
 
-double ParticleFilter::CalcWeight(const vector<LandmarkObs> &transformedObservations, 
-vector<LandmarkObs> &predictedLandmarks, 
+double ParticleFilter::CalcWeight(const LandmarkObsCollection &transformedObsCollection, 
+LandmarkObsCollection &predictedLandmarkCollection, 
 double std_x, double std_y)
 {
   double particle_likelihood = 1.0;
 
   double mu_x, mu_y;
-  for (int i=0; i<transformedObservations.size(); i++) {
-		LandmarkObs tObs = transformedObservations[i];
+  for (int i=0; i<transformedObsCollection.landmarkObsVect_.size(); i++) {
+		LandmarkObs tObs = transformedObsCollection.landmarkObsVect_[i];
 
     // Find corresponding landmark on map for centering gaussian distribution
-    for (int j=0; j<predictedLandmarks.size(); j++)
+    for (int j=0; j<predictedLandmarkCollection.landmarkObsVect_.size(); j++)
 		{
-			LandmarkObs pLandmark = predictedLandmarks[j];
+			LandmarkObs pLandmark = predictedLandmarkCollection.landmarkObsVect_[j];
       if (tObs.id == pLandmark.id) {
         mu_x = pLandmark.x;
         mu_y = pLandmark.y;
@@ -175,14 +242,14 @@ double std_x, double std_y)
 void ParticleFilter::NormalizeParticleWeights() 
 {
 	double denom = numeric_limits<double>::epsilon();
-	for(int i=0; i<particles.size(); i++)
+	for(int i=0; i<particleCollection_.particles_.size(); i++)
 	{
-		denom += particles[i].weight;
+		denom += particleCollection_.particles_[i].weight;
 	}
 
-	for(int i=0; i<particles.size(); i++)
+	for(int i=0; i<particleCollection_.particles_.size(); i++)
 	{
-		particles[i].weight /= denom;
+		particleCollection_.particles_[i].weight /= denom;
 	}
 }
 
@@ -203,25 +270,26 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	double std_x = std_landmark[0];
 	double std_y = std_landmark[1];
 
-	for(int i=0; i<particles.size(); i++)
+	for(int i=0; i<particleCollection_.particles_.size(); i++)
 	{
-		double p_x = particles[i].x;
-		double p_y = particles[i].y;
-		double p_theta = particles[i].theta;
+		double p_x = particleCollection_.particles_[i].x;
+		double p_y = particleCollection_.particles_[i].y;
+		double p_theta = particleCollection_.particles_[i].theta;
 
-		vector<LandmarkObs> predictedLandmarks =
-			FilterMapLandmarks(map_landmarks, p_x, p_y, sensor_range);		
-		vector<LandmarkObs> transformedObservations;
+		LandmarkObsCollection predictedLandmarkCollection =
+			FilterMapLandmarks(map_landmarks, p_x, p_y, sensor_range);
+
+		LandmarkObsCollection transformedObsCollection;
 		for(int j=0; j<observations.size(); j++)
 		{
-			LandmarkObs transformedObs = ConvertObsCoordsToMapCoords(observations[j], particles[i]);
+			LandmarkObs transformedObs = ConvertObsCoordsToMapCoords(observations[j], particleCollection_.particles_[i]);
 
-			transformedObservations.push_back(transformedObs);
+			transformedObsCollection.landmarkObsVect_.push_back(transformedObs);
 		}
 
-		dataAssociation(predictedLandmarks, transformedObservations);
+		dataAssociation(predictedLandmarkCollection, transformedObsCollection);
 
-		particles[i].weight = CalcWeight(transformedObservations, predictedLandmarks, 
+		particleCollection_.particles_[i].weight = CalcWeight(transformedObsCollection, predictedLandmarkCollection, 
 																			std_x, std_y);
 	}
 
@@ -233,11 +301,11 @@ void ParticleFilter::resample() {
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 
-	int N = particles.size();
+	int N = particleCollection_.particles_.size();
 	weights.clear();
-	for(int i=0; i<particles.size(); i++)
+	for(int i=0; i<particleCollection_.particles_.size(); i++)
 	{
-		weights.push_back(particles[i].weight);
+		weights.push_back(particleCollection_.particles_[i].weight);
 	}
 
 	discrete_distribution<int> distribution(weights.begin(),weights.end());
@@ -258,15 +326,15 @@ void ParticleFilter::resample() {
 			beta -= weights[index];
 			index = (index+1) % N;
 		}
-		newParticles.push_back(particles[index]);
+		newParticles.push_back(particleCollection_.particles_[index]);
 	}
 
-	particles = newParticles;
+	particleCollection_.particles_ = newParticles;
 
 	// reset the weights to 1.0
-	for(int i=0; i<particles.size(); i++)
+	for(int i=0; i<particleCollection_.particles_.size(); i++)
 	{
-		particles[i].weight = 1.0;
+		particleCollection_.particles_[i].weight = 1.0;
 	}
 }
 

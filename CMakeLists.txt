@@ -7,7 +7,7 @@ add_definitions(-std=c++11)
 set(CXX_FLAGS "-Wall")
 set(CMAKE_CXX_FLAGS, "${CXX_FLAGS}")
 
-set(sources src/particle_filter.cpp src/main.cpp)
+set(sources src/main.cpp src/particle_filter.cpp src/particle_filter.h src/helper_functions.h) 
 
 # gtest 
 #set(test_sources test/gtest_main.cpp src/ukf.cpp src/ukf.h src/tools.cpp src/sensor_data.cpp #src/sensor_data.h test/ukf_test.cpp test/util.cpp test/util.h)

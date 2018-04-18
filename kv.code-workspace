@@ -2,6 +2,9 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "/Users/phillipcchin/work/carnd/CarND-Unscented-Kalman-Filter-Project"
 		}
 	],
 	"settings": {
@@ -31,7 +34,9 @@
 			"unordered_map": "cpp",
 			"unordered_set": "cpp",
 			"vector": "cpp",
-			"*.ipp": "cpp"
+			"*.ipp": "cpp",
+			"valarray": "cpp",
+			"__locale": "cpp"
 		}
 	}
 }

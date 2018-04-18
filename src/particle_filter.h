@@ -11,6 +11,12 @@
 
 #include <random>
 #include "helper_functions.h"
+#include "Eigen/Dense"
+
+using namespace std;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+using std::vector;
 
 struct Particle {
 	int id;
@@ -23,7 +29,16 @@ struct Particle {
 	std::vector<double> sense_y;
 };
 
+class ParticleCollection 
+{
+	public:
+		vector<Particle> particles_;
 
+		MatrixXd GetPositionMatrix();
+		MatrixXd GetPositionMatrix_1col();
+		MatrixXd ConvertToMapCoords(const MatrixXd &positionMatrix_1col, const Particle &particle);
+		VectorXd GetDistances(const MatrixXd &positionMatrix, const VectorXd &landmarkMapPosVec);
+};
 
 class ParticleFilter {
 	// Number of particles to draw
@@ -41,7 +56,8 @@ class ParticleFilter {
 public:
 	
 	// Set of current particles
-	std::vector<Particle> particles;
+	//std::vector<Particle> particles;
+	ParticleCollection particleCollection_;
 
 	// Constructor
 	// @param num_particles Number of particles
@@ -78,7 +94,8 @@ public:
 	 * @param predicted Vector of predicted landmark observations
 	 * @param observations Vector of landmark observations
 	 */
-	void dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations);
+	void dataAssociation(LandmarkObsCollection &predictedCollection, 
+																			LandmarkObsCollection &observationCollection);
 	
 	/**
 	 * ConvertObsCoordsToMapCoords converts the local coordinates of
@@ -98,7 +115,7 @@ public:
 	 * @param max_range - max range from x,y
 	 * @return subset of map landmark observations
 	 */
-	std::vector<LandmarkObs> FilterMapLandmarks(const Map &map, double x, double y, double max_range);
+	LandmarkObsCollection FilterMapLandmarks(const Map &map, double x, double y, double max_range);
 
 	/**
 	 * CalcWeight calculates the weight of a particle
@@ -108,7 +125,9 @@ public:
 	 * @param std_y - standard dev of y
 	 * @return the weight for a particle 
 	 */
-	double CalcWeight(const std::vector<LandmarkObs> &transformedObservations, std::vector<LandmarkObs> &predictedLandmarks, double std_x, double std_y);
+	double CalcWeight(const LandmarkObsCollection &transformedObsCollection, 
+										LandmarkObsCollection &predictedLandmarkCollection, 
+										double std_x, double std_y);
 
 	/**
 	 * NormalizeParticleWeights normalizes all of the 
