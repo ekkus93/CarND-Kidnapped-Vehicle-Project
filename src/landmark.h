@@ -21,7 +21,7 @@ class LandmarkObsCollection
 		
 		Eigen::MatrixXd GetPositionMatrix();
 		Eigen::MatrixXd GetPositionMatrix_1col();
-		Eigen::MatrixXd ConvertToMapCoords(const Eigen::MatrixXd &positionMatrix_1col, Particle &particle);
+		LandmarkObsCollection ConvertToMapCoords(Particle &particle);
 };
 
 #endif /* LANDMARK_H_*/

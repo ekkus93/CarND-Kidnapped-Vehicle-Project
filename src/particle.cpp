@@ -24,7 +24,7 @@ MatrixXd ParticleCollection::GetPositionMatrix()
 
 MatrixXd ParticleCollection::GetPositionMatrix_1col()
 {
-	MatrixXd positionMatrix = MatrixXd(particles_.size(), 2);
+	MatrixXd positionMatrix = MatrixXd(particles_.size(), 3);
 	for(int i=0; i<particles_.size(); i++)
 	{
 		positionMatrix.row(i) << particles_[i].x, particles_[i].y, 1;

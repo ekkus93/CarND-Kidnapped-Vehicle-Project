@@ -19,7 +19,7 @@ MatrixXd LandmarkObsCollection::GetPositionMatrix()
 
 MatrixXd LandmarkObsCollection::GetPositionMatrix_1col()
 {
-	MatrixXd positionMatrix = MatrixXd(landmarkObsVect_.size(), 2);
+	MatrixXd positionMatrix = MatrixXd(landmarkObsVect_.size(), 3);
 	for(int i=0; i<landmarkObsVect_.size(); i++)
 	{
 		positionMatrix.row(i) << landmarkObsVect_[i].x, landmarkObsVect_[i].y, 1;
@@ -28,12 +28,27 @@ MatrixXd LandmarkObsCollection::GetPositionMatrix_1col()
 	return positionMatrix;
 }
 
-MatrixXd LandmarkObsCollection::ConvertToMapCoords(const MatrixXd &positionMatrix_1col, Particle &particle)
+ LandmarkObsCollection LandmarkObsCollection::ConvertToMapCoords(Particle &particle)
 {
+	MatrixXd positionMatrix_1col = GetPositionMatrix_1col();
+
 	MatrixXd homogeneousTransform = MatrixXd(3, 3);
   homogeneousTransform << cos(particle.theta), -sin(particle.theta), particle.x,
                             sin(particle.theta), cos(particle.theta), particle.y,
                             0, 0, 1;
 
-	return positionMatrix_1col * homogeneousTransform.transpose();
+	MatrixXd mapCoordsMaxtrix = positionMatrix_1col * homogeneousTransform.transpose();
+
+	LandmarkObsCollection mapCoordsLandmarkObsCollection;
+	for(int i=0; i<mapCoordsMaxtrix.rows(); i++)
+	{
+		LandmarkObs currLandmarkObs;
+		currLandmarkObs.id = landmarkObsVect_[i].id;
+		currLandmarkObs.x = mapCoordsMaxtrix(i, 0);
+		currLandmarkObs.y = mapCoordsMaxtrix(i, 1);
+
+		mapCoordsLandmarkObsCollection.landmarkObsVect_.push_back(currLandmarkObs);
+	}
+
+	return mapCoordsLandmarkObsCollection;
 }

@@ -191,8 +191,19 @@ void ParticleFilter::NormalizeParticleWeights()
 	}
 }
 
+/*
+def update(particles, weights, z, R, landmarks):
+    weights.fill(1.)
+    for i, landmark in enumerate(landmarks):
+        distance = np.linalg.norm(particles[:, 0:2] - landmark, axis=1)
+        weights *= scipy.stats.norm(distance, R).pdf(z[i])
+
+    weights += 1.e-300      # avoid round-off to zero
+    weights /= sum(weights) # normalize
+*/
+
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
-                      const std::vector<LandmarkObs> &observations, const Map &map_landmarks)																	
+                      LandmarkObsCollection &obsCollection, const Map &map_landmarks)																	
 {
 	// TODO: Update the weights of each particle using a mult-variate Gaussian distribution. You can read
 	//   more about this distribution here: https://en.wikipedia.org/wiki/Multivariate_normal_distribution
@@ -217,13 +228,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		LandmarkObsCollection predictedLandmarkCollection =
 			FilterMapLandmarks(map_landmarks, p_x, p_y, sensor_range);
 
-		LandmarkObsCollection transformedObsCollection;
-		for(int j=0; j<observations.size(); j++)
-		{
-			LandmarkObs transformedObs = ConvertObsCoordsToMapCoords(observations[j], particleCollection_.particles_[i]);
-
-			transformedObsCollection.landmarkObsVect_.push_back(transformedObs);
-		}
+		LandmarkObsCollection transformedObsCollection = obsCollection.ConvertToMapCoords(particleCollection_.particles_[i]);
 
 		dataAssociation(predictedLandmarkCollection, transformedObsCollection);
 

@@ -110,8 +110,11 @@ int main()
 				noisy_observations.push_back(obs);
         	}
 
+      LandmarkObsCollection noisyObsCollection;
+      noisyObsCollection.landmarkObsVect_ = noisy_observations;
+
 		  // Update the weights and resample
-		  pf.updateWeights(sensor_range, sigma_landmark, noisy_observations, map);
+		  pf.updateWeights(sensor_range, sigma_landmark, noisyObsCollection, map);
 		  pf.resample();
 
 		  // Calculate and output the average weighted error of the particle filter over all time steps so far.
